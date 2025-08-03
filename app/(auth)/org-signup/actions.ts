@@ -235,7 +235,7 @@ export async function createOrganizationWithAdmin(
                     process.env.BETTER_AUTH_URL
                   }/verify-request?email=${encodeURIComponent(
         data.adminEmail
-      )}" class="button">
+      )}&org=true" class="button">
                     Verify Email Address
                   </a>
                 </center>

@@ -39,8 +39,12 @@ function VerifyRequest() {
   async function verifyOtp() {
     startTransition(async () => {
       try {
-        if (isOrganizationSignup) {
-          // Use custom verification endpoint for organization signups
+        const orgParam = params.get("org");
+        const isOrgSignup = orgParam === "true";
+
+        if (isOrgSignup) {
+          console.log("Attempting organization verification for:", email);
+
           const response = await fetch("/api/auth/verify-organization-signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -51,19 +55,34 @@ function VerifyRequest() {
             }),
           });
 
+          let data;
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error("Failed to parse JSON:", jsonError);
+            toast.error("Invalid server response. Please try again.");
+            return;
+          }
+
           if (!response.ok) {
-            const data = await response.json();
             toast.error(data.error || "Error verifying email");
             return;
           }
 
-          const data = await response.json();
-          toast.success("Email verified successfully!");
+          if (data.success) {
+            toast.success("Email verified successfully! You can now sign in.");
 
-          // Force a hard redirect to ensure session is picked up
-          window.location.href = "/dashboard";
+            // Redirect to the specified destination (should be login with email pre-filled)
+            const redirectTo = data.redirectTo || "/login";
+            console.log("Redirecting to:", redirectTo);
+            setTimeout(() => {
+              window.location.href = redirectTo;
+            }, 1500);
+          } else {
+            toast.error("Verification failed. Please try again.");
+          }
         } else {
-          // Use regular emailOTP for normal signups
+          // Regular email OTP flow...
           const result = await authClient.signIn.emailOtp({
             email: email,
             otp: otp,
@@ -83,7 +102,6 @@ function VerifyRequest() {
       }
     });
   }
-
   return (
     <Card className="w-full mx-auto">
       <CardHeader className="text-center">

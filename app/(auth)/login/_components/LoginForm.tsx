@@ -14,15 +14,30 @@ import { authClient } from "@/lib/auth-client";
 
 import { Building2, GithubIcon, Loader, Loader2, Send } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
 import { toast } from "sonner";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [githubPending, startGithubTransition] = useTransition();
   const [emailPending, startEmailTransition] = useTransition();
   const [email, setEmail] = useState("");
+
+  // Check if user came from email verification
+  useEffect(() => {
+    const urlEmail = searchParams.get("email");
+    const isVerified = searchParams.get("verified") === "true";
+
+    if (urlEmail) {
+      setEmail(urlEmail);
+    }
+
+    if (isVerified && urlEmail) {
+      toast.success("Email verified! Please sign in to continue.");
+    }
+  }, [searchParams]);
 
   async function signInWithGithub() {
     startGithubTransition(async () => {
@@ -58,6 +73,7 @@ export function LoginForm() {
       });
     });
   }
+
   return (
     <Card>
       <CardHeader>

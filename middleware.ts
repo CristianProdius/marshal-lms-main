@@ -37,7 +37,7 @@ async function authMiddleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static assets, but auth check only on admin routes
+  // Run on all routes except static assets, API auth routes, and favicon
   matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
 };
 
@@ -48,6 +48,6 @@ export default createMiddleware(aj, async (request: NextRequest) => {
     return authMiddleware(request);
   }
 
-  // For non-admin routes, just continue
+  // For all other routes (not admin, not api/auth), just continue
   return NextResponse.next();
 });

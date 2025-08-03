@@ -7,119 +7,6 @@ import { resend } from "./resend";
 import { admin } from "better-auth/plugins";
 import { organizationPlugin } from "./auth-organization-plugin";
 import type { OrganizationContext, CombinedRole } from "./auth-types";
-import { createAuthEndpoint } from "better-auth/api";
-import { z } from "zod";
-import crypto from "crypto";
-import type { BetterAuthPlugin } from "better-auth";
-
-// Create a custom plugin for organization verification
-const organizationVerificationPlugin = (): BetterAuthPlugin => {
-  return {
-    id: "organization-verification",
-    endpoints: {
-      verifyOrganizationSignup: createAuthEndpoint(
-        "/verify-organization-signup",
-        {
-          method: "POST",
-          body: z.object({
-            email: z.string().email(),
-            code: z.string().length(6),
-          }),
-        },
-        async (ctx) => {
-          const { body } = ctx;
-
-          try {
-            // Find the verification record
-            const verification = await prisma.verification.findFirst({
-              where: {
-                identifier: body.email,
-                value: body.code,
-                expiresAt: {
-                  gt: new Date(),
-                },
-              },
-            });
-
-            if (!verification) {
-              return ctx.json(
-                { error: "Invalid or expired verification code" },
-                { status: 400 }
-              );
-            }
-
-            // Find and update the user
-            const user = await prisma.user.findUnique({
-              where: { email: body.email },
-              include: { organization: true },
-            });
-
-            if (!user) {
-              return ctx.json({ error: "User not found" }, { status: 404 });
-            }
-
-            // Update user to mark as verified
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { emailVerified: true },
-            });
-
-            // Delete the verification record
-            await prisma.verification.delete({
-              where: { id: verification.id },
-            });
-
-            // Create a session for the user
-            const sessionId = crypto.randomUUID();
-            const sessionToken = crypto.randomUUID();
-            const expiresAt = new Date(Date.now() + 60 * 60 * 24 * 30 * 1000); // 30 days
-
-            await prisma.session.create({
-              data: {
-                id: sessionId,
-                token: sessionToken,
-                userId: user.id,
-                expiresAt: expiresAt,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            });
-
-            // Set the session cookie
-            ctx.setHeader(
-              "Set-Cookie",
-              `better-auth.session_token=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; ${
-                process.env.NODE_ENV === "production" ? "Secure;" : ""
-              } Max-Age=${60 * 60 * 24 * 30}`
-            );
-
-            return ctx.json({
-              success: true,
-              user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                organizationId: user.organizationId,
-                organization: user.organization,
-              },
-              session: {
-                id: sessionId,
-                token: sessionToken,
-                expiresAt: expiresAt,
-              },
-            });
-          } catch (error) {
-            console.error("Verification error:", error);
-            return ctx.json(
-              { error: "Failed to verify email" },
-              { status: 500 }
-            );
-          }
-        }
-      ),
-    },
-  };
-};
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -136,7 +23,8 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp }) {
-        await resend.emails.send({
+        console.log("Sending verification OTP to:", email);
+        const result = await resend.emails.send({
           from: "PrecuityAI <cristian@prodiusenterprise.com>",
           to: [email],
           subject: "PrecuityAI - Verify your email",
@@ -152,11 +40,11 @@ export const auth = betterAuth({
             </div>
           `,
         });
+        console.log("OTP email sent successfully:", result);
       },
     }),
     admin(),
     organizationPlugin(),
-    organizationVerificationPlugin(), // Add our custom verification plugin
   ],
 
   session: {

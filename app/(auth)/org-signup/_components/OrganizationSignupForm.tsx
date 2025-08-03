@@ -77,8 +77,12 @@ export function OrganizationSignupForm() {
 
       if (result.status === "success") {
         toast.success(result.message);
-        // Redirect to verify email page
-        router.push(`/verify-request?email=${values.adminEmail}`);
+        // Redirect to verify email page with org flag
+        router.push(
+          `/verify-request?email=${encodeURIComponent(
+            values.adminEmail
+          )}&org=true`
+        );
       } else if (result.status === "error") {
         toast.error(result.message);
       }
