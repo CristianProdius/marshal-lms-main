@@ -46,7 +46,7 @@ export function LoginForm() {
         callbackURL: "/",
         fetchOptions: {
           onSuccess: () => {
-            toast.success("Singed in with Github, you will be redirected...");
+            toast.success("Signed in with Github, you will be redirected...");
           },
           onError: () => {
             toast.error("Internal Server Error");
@@ -56,21 +56,52 @@ export function LoginForm() {
     });
   }
 
-  function signInWithEmail() {
+  async function signInWithEmail() {
+    if (!email) {
+      toast.error("Please enter an email address");
+      return;
+    }
+
     startEmailTransition(async () => {
-      await authClient.emailOtp.sendVerificationOtp({
-        email: email,
-        type: "sign-in",
-        fetchOptions: {
-          onSuccess: () => {
-            toast.success("Email sent");
-            router.push(`/verify-request?email=${email}`);
-          },
-          onError: () => {
-            toast.error("Erorr sending email");
-          },
-        },
-      });
+      try {
+        // Use the correct method from better-auth client
+        const response = await fetch(
+          "/api/auth/email-otp/send-verification-otp",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: email,
+              type: "sign-in",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ message: "Failed to send email" }));
+          throw new Error(error.message || "Failed to send verification email");
+        }
+
+        const data = await response.json();
+
+        if (data.success !== false) {
+          toast.success("Verification code sent to your email!");
+          router.push(`/verify-request?email=${encodeURIComponent(email)}`);
+        } else {
+          throw new Error(data.message || "Failed to send verification email");
+        }
+      } catch (error) {
+        console.error("Error sending verification email:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to send verification email"
+        );
+      }
     });
   }
 
@@ -113,19 +144,25 @@ export function LoginForm() {
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               placeholder="m@example.com"
               required
+              disabled={emailPending}
             />
           </div>
 
-          <Button onClick={signInWithEmail} disabled={emailPending}>
+          <Button
+            onClick={signInWithEmail}
+            disabled={emailPending || !email}
+            type="button"
+          >
             {emailPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span>Loading...</span>
+                <span>Sending...</span>
               </>
             ) : (
               <>
@@ -135,6 +172,7 @@ export function LoginForm() {
             )}
           </Button>
         </div>
+
         <div className="relative text-center text-sm mt-6 pt-6 border-t">
           <span className="bg-card px-2 text-muted-foreground">
             Looking for team access?

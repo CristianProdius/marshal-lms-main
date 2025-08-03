@@ -13,6 +13,9 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
+
   socialProviders: {
     github: {
       clientId: env.AUTH_GITHUB_CLIENT_ID,
@@ -22,26 +25,80 @@ export const auth = betterAuth({
 
   plugins: [
     emailOTP({
-      async sendVerificationOTP({ email, otp }) {
-        console.log("Sending verification OTP to:", email);
-        const result = await resend.emails.send({
-          from: "PrecuityAI <cristian@prodiusenterprise.com>",
-          to: [email],
-          subject: "PrecuityAI - Verify your email",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Welcome to PrecuityAI</h2>
-              <p>Your verification code is:</p>
-              <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px;">
-                ${otp}
-              </div>
-              <p>This code will expire in 10 minutes.</p>
-              <p>If you didn't request this verification, please ignore this email.</p>
-            </div>
-          `,
-        });
-        console.log("OTP email sent successfully:", result);
+      async sendVerificationOTP({ email, otp, type }) {
+        try {
+          console.log(`Sending ${type} OTP to:`, email);
+
+          const subject =
+            type === "sign-in"
+              ? "Sign in to PrecuityAI"
+              : "Verify your PrecuityAI account";
+
+          const result = await resend.emails.send({
+            from: "PrecuityAI <cristian@prodiusenterprise.com>",
+            to: [email],
+            subject: subject,
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }
+                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .otp-code { background: #fff; border: 2px dashed #667eea; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border-radius: 8px; color: #667eea; }
+                    .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h1>PrecuityAI</h1>
+                      <p style="margin: 0; opacity: 0.9;">${
+                        type === "sign-in"
+                          ? "Sign In Request"
+                          : "Email Verification"
+                      }</p>
+                    </div>
+                    
+                    <div class="content">
+                      <h2>Hello!</h2>
+                      
+                      <p>${
+                        type === "sign-in"
+                          ? "You requested to sign in to your PrecuityAI account. Use the verification code below:"
+                          : "Please verify your email address using the code below:"
+                      }</p>
+                      
+                      <div class="otp-code">
+                        ${otp}
+                      </div>
+                      
+                      <p><small>This code will expire in 10 minutes for security reasons.</small></p>
+                      
+                      <p>If you didn't request this code, you can safely ignore this email.</p>
+                      
+                      <div class="footer">
+                        <p>Need help? Contact our support team at support@PrecuityAI.com</p>
+                        <p>&copy; ${new Date().getFullYear()} PrecuityAI. All rights reserved.</p>
+                      </div>
+                    </div>
+                  </div>
+                </body>
+              </html>
+            `,
+          });
+
+          console.log("OTP email sent successfully:", result);
+          // Return void as required by the type
+        } catch (error) {
+          console.error("Failed to send OTP email:", error);
+          throw new Error("Failed to send verification email");
+        }
       },
+      otpLength: 6,
+      expiresIn: 60 * 10, // 10 minutes
     }),
     admin(),
     organizationPlugin(),
@@ -91,7 +148,6 @@ declare module "better-auth" {
       banReason?: string | null;
       banExpires?: Date | null;
       organizationId?: string | null;
-
       combinedRole?: CombinedRole;
       organizationContext?: OrganizationContext | null;
     };
