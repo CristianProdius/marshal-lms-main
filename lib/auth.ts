@@ -24,12 +24,12 @@ export const auth = betterAuth({
     emailOTP({
       async sendVerificationOTP({ email, otp }) {
         await resend.emails.send({
-          from: "MarshalLMS <noreply@marshallms.com>",
+          from: "PrecuityAI <cristian@prodiusenterprise.com>",
           to: [email],
-          subject: "MarshalLMS - Verify your email",
+          subject: "PrecuityAI - Verify your email",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>Welcome to MarshalLMS</h2>
+              <h2>Welcome to PrecuityAI</h2>
               <p>Your verification code is:</p>
               <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px;">
                 ${otp}

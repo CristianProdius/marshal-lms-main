@@ -89,7 +89,20 @@ export async function createOrganizationWithAdmin(
 
     // Create organization and admin user in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create the organization
+      // Create the admin user FIRST (without organizationId)
+      const user = await tx.user.create({
+        data: {
+          id: userId,
+          name: data.adminName,
+          email: data.adminEmail,
+          emailVerified: false,
+          role: "admin", // Organization owner is also a system admin
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Now create the organization with the existing user's ID
       const organization = await tx.organization.create({
         data: {
           name: data.organizationName,
@@ -108,19 +121,13 @@ export async function createOrganizationWithAdmin(
         },
       });
 
-      // Create the admin user
-      const user = await tx.user.create({
+      // Update the user with organization details
+      await tx.user.update({
+        where: { id: userId },
         data: {
-          id: userId,
-          name: data.adminName,
-          email: data.adminEmail,
-          emailVerified: false,
-          role: "admin", // Organization owner is also a system admin
           organizationId: organization.id,
           organizationRole: OrganizationRole.OWNER,
           joinedOrganizationAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
         },
       });
 
@@ -156,9 +163,9 @@ export async function createOrganizationWithAdmin(
 
     // Send welcome email with verification code
     await resend.emails.send({
-      from: "MarshalLMS <noreply@marshallms.com>",
+      from: "PrecuityAI <cristian@prodiusenterprise.com>",
       to: [data.adminEmail],
-      subject: `Welcome to MarshalLMS - ${data.organizationName}`,
+      subject: `Welcome to PrecuityAI - ${data.organizationName}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -177,7 +184,7 @@ export async function createOrganizationWithAdmin(
           <body>
             <div class="container">
               <div class="header">
-                <h1>Welcome to MarshalLMS! 🎉</h1>
+                <h1>Welcome to PrecuityAI! 🎉</h1>
                 <p style="margin: 0; opacity: 0.9;">Your organization has been created successfully</p>
               </div>
               
@@ -186,7 +193,7 @@ export async function createOrganizationWithAdmin(
                 
                 <p>Congratulations on creating <strong>${
                   data.organizationName
-                }</strong> on MarshalLMS! You're now the organization administrator with full control over your learning management system.</p>
+                }</strong> on PrecuityAI! You're now the organization administrator with full control over your learning management system.</p>
                 
                 <div class="info-box">
                   <strong>📧 Verify Your Email</strong><br>
@@ -235,8 +242,8 @@ export async function createOrganizationWithAdmin(
                 
                 <div class="footer">
                   <p>If you didn't create this account, please ignore this email.</p>
-                  <p>Need help? Contact our support team at support@marshallms.com</p>
-                  <p>&copy; ${new Date().getFullYear()} MarshalLMS. All rights reserved.</p>
+                  <p>Need help? Contact our support team at support@PrecuityAI.com</p>
+                  <p>&copy; ${new Date().getFullYear()} PrecuityAI. All rights reserved.</p>
                 </div>
               </div>
             </div>
