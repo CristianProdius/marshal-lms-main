@@ -30,35 +30,72 @@ export default function VerifyRequestRoute() {
 function VerifyRequest() {
   const router = useRouter();
   const [otp, setOtp] = useState("");
-  const [emailPending, startTranstion] = useTransition();
+  const [emailPending, startTransition] = useTransition();
   const params = useSearchParams();
   const email = params.get("email") as string;
+  const isOrganizationSignup = params.get("org") === "true";
   const isOtpCompleted = otp.length === 6;
 
-  function verifyOtp() {
-    startTranstion(async () => {
-      await authClient.signIn.emailOtp({
-        email: email,
-        otp: otp,
-        fetchOptions: {
-          onSuccess: () => {
-            toast.success("Email verified");
-            router.push("/");
-          },
-          onError: () => {
-            toast.error("Error verifying Email/OTP");
-          },
-        },
-      });
+  async function verifyOtp() {
+    startTransition(async () => {
+      try {
+        if (isOrganizationSignup) {
+          // Use custom verification endpoint for organization signups
+          const response = await fetch("/api/auth/verify-organization-signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              email: email,
+              code: otp,
+            }),
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            toast.error(data.error || "Error verifying email");
+            return;
+          }
+
+          const data = await response.json();
+          toast.success("Email verified successfully!");
+
+          // Force a hard redirect to ensure session is picked up
+          window.location.href = "/dashboard";
+        } else {
+          // Use regular emailOTP for normal signups
+          const result = await authClient.signIn.emailOtp({
+            email: email,
+            otp: otp,
+          });
+
+          if (result.error) {
+            toast.error(result.error.message || "Error verifying Email/OTP");
+            return;
+          }
+
+          toast.success("Email verified");
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Verification error:", error);
+        toast.error("Failed to verify email. Please try again.");
+      }
     });
   }
+
   return (
     <Card className="w-full mx-auto">
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Please check your email</CardTitle>
         <CardDescription>
-          We have sent a verification email code to your email address. Please
+          We have sent a verification code to <strong>{email}</strong>. Please
           open the email and paste the code below.
+          {isOrganizationSignup && (
+            <span className="block mt-2 text-primary font-semibold">
+              Organization Account Verification
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -93,12 +130,17 @@ function VerifyRequest() {
           {emailPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              <span>Loading...</span>
+              <span>Verifying...</span>
             </>
           ) : (
             "Verify Account"
           )}
         </Button>
+
+        <div className="text-center text-sm text-muted-foreground">
+          <p>Didn't receive the code?</p>
+          <p className="mt-1">Check your spam folder or wait a few moments.</p>
+        </div>
       </CardContent>
     </Card>
   );
