@@ -82,6 +82,72 @@ export const lessonSchema = z.object({
   thumbnailKey: z.string().optional(),
 });
 
+// Organization Signup Schemas
+export const organizationSignupSchema = z.object({
+  // Organization Details
+  organizationName: z
+    .string()
+    .min(2, { message: "Organization name must be at least 2 characters" })
+    .max(100, { message: "Organization name must be at most 100 characters" }),
+
+  organizationSlug: z
+    .string()
+    .min(2, { message: "Slug must be at least 2 characters" })
+    .max(50, { message: "Slug must be at most 50 characters" })
+    .regex(/^[a-z0-9-]+$/, {
+      message: "Slug can only contain lowercase letters, numbers, and hyphens",
+    }),
+
+  organizationDescription: z
+    .string()
+    .max(500, { message: "Description must be at most 500 characters" })
+    .optional(),
+
+  // Admin Account Details
+  adminName: z
+    .string()
+    .min(2, { message: "Name must be at least 2 characters" })
+    .max(100, { message: "Name must be at most 100 characters" }),
+
+  adminEmail: z
+    .string()
+    .email({ message: "Please enter a valid email address" }),
+
+  // Organization Settings
+  contactEmail: z
+    .string()
+    .email({ message: "Please enter a valid contact email" })
+    .optional(),
+
+  contactPhone: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/, {
+      message: "Please enter a valid phone number",
+    })
+    .optional()
+    .or(z.literal("")),
+
+  website: z
+    .string()
+    .url({ message: "Please enter a valid URL" })
+    .optional()
+    .or(z.literal("")),
+
+  // Make maxSeats required with coerce for number conversion
+  maxSeats: z.coerce
+    .number()
+    .min(1, { message: "Must have at least 1 seat" })
+    .max(1000, { message: "Maximum 1000 seats allowed" }),
+
+  // Terms acceptance
+  acceptTerms: z.boolean().refine((val) => val === true, {
+    message: "You must accept the terms and conditions",
+  }),
+});
+
+export type OrganizationSignupSchemaType = z.infer<
+  typeof organizationSignupSchema
+>;
 export type CourseSchemaType = z.infer<typeof courseSchema>;
 export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;

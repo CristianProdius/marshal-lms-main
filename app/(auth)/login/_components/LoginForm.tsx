@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 
-import { GithubIcon, Loader, Loader2, Send } from "lucide-react";
+import { Building2, GithubIcon, Loader, Loader2, Send } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -117,6 +118,24 @@ export function LoginForm() {
               </>
             )}
           </Button>
+        </div>
+        <div className="relative text-center text-sm mt-6 pt-6 border-t">
+          <span className="bg-card px-2 text-muted-foreground">
+            Looking for team access?
+          </span>
+        </div>
+
+        <div className="text-center">
+          <Link
+            href="/org-signup"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+          >
+            <Building2 className="size-3" />
+            Create an organization account
+          </Link>
+          <p className="text-xs text-muted-foreground mt-1">
+            Perfect for teams and businesses
+          </p>
         </div>
       </CardContent>
     </Card>
